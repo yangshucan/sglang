@@ -1669,6 +1669,52 @@ class DecodeTransferQueue(DecodeHiCacheTransferMixin):
                         self.scheduler.metrics_collector.increment_transfer_failed_reqs()
                 else:
                     transferred_reqs.append(decode_req.req)
+
+                    # NEW: Emit BlockTransferred event
+                    if (
+                        hasattr(self.tree_cache, "enable_kv_cache_events")
+                        and self.tree_cache.enable_kv_cache_events
+                    ):
+                        transfer_backend = getattr(
+                            self.scheduler.server_args,
+                            "disaggregation_transfer_backend",
+                            "unknown",
+                        )
+                        req = decode_req.req
+                        kv_committed_len = req.kv_committed_len
+                        page_size = self.tree_cache.page_size
+                        num_pages = kv_committed_len // page_size
+                        # Get block hashes from req_to_token_pool
+                        kv_indices = self.tree_cache.req_to_token_pool.req_to_token[
+                            req.req_pool_idx, :kv_committed_len
+                        ]
+                        block_hashes = kv_indices[::page_size].tolist()[:num_pages]
+                        # Approximate bytes: num_tokens * (k+v element bytes)
+                        kv_cache = self.tree_cache.token_to_kv_pool_allocator.get_kvcache()
+                        try:
+                            k_bytes, v_bytes = kv_cache.get_kv_size_bytes()
+                            per_token_kv_bytes = (
+                                k_bytes + v_bytes
+                            ) // kv_cache.size
+                        except Exception:
+                            per_token_kv_bytes = 65536  # fallback estimate
+
+                        from sglang.srt.disaggregation.kv_events import (
+                            BlockTransferred,
+                        )
+
+                        self.tree_cache.kv_event_queue.append(
+                            BlockTransferred(
+                                block_hashes=block_hashes,
+                                req_id=req.rid,
+                                src=req.bootstrap_host,
+                                dst=self.scheduler.server_args.host,
+                                backend=transfer_backend,
+                                transfer_latency_us=0,
+                                bytes_transferred=kv_committed_len
+                                * per_token_kv_bytes,
+                            )
+                        )
             elif poll in [
                 KVPoll.Bootstrapping,
                 KVPoll.WaitingForInput,
