@@ -53,8 +53,11 @@ class KVCacheEvent(
     omit_defaults=True,  # type: ignore[call-arg]
     gc=False,  # type: ignore[call-arg]
     tag=True,
+    kw_only=True,  # type: ignore[call-arg]
 ):
     """Base class for all KV cache-related events"""
+    req_id: Optional[str] = None
+    sequence_id: Optional[int] = None
 
 
 class StorageMedium(str, enum.Enum):
