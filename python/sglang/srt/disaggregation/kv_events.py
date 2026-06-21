@@ -98,6 +98,7 @@ class BlockStored(KVCacheEvent):
 class BlockRemoved(KVCacheEvent):
     block_hashes: list[int]
     medium: Optional[str] = None
+    reason: Optional[str] = None
 
 
 class AllBlocksCleared(KVCacheEvent):
