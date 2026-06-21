@@ -67,6 +67,7 @@ class InsertParams:
     # General
     chunked: bool = False
     priority: int = 0
+    req_id: Optional[str] = None
 
 
 @dataclasses.dataclass

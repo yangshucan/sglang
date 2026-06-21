@@ -402,6 +402,7 @@ class RadixCache(KVCacheEventMixin, BasePrefixCache):
         value = params.value
         priority = params.priority
         chunked = params.chunked
+        req_id = params.req_id
 
         key, value = key.maybe_to_bigram_view(self.is_eagle, value)
         key = key.page_aligned(self.page_size)
@@ -411,7 +412,9 @@ class RadixCache(KVCacheEventMixin, BasePrefixCache):
             # Debug/test fallback: use token ids themselves as values.
             value = torch.tensor(key.token_ids[: len(key)], dtype=torch.int64)
 
-        prefix_len = self._insert_helper(self.root_node, key, value, priority, chunked)
+        prefix_len = self._insert_helper(
+            self.root_node, key, value, priority, chunked, req_id
+        )
         return InsertResult(prefix_len=prefix_len)
 
     def cache_finished_req(self, req: Req, is_insert: bool = True):
@@ -443,7 +446,8 @@ class RadixCache(KVCacheEventMixin, BasePrefixCache):
         if is_insert:
             priority = getattr(req, "priority", 0) or 0
             result = self.insert(
-                InsertParams(key=radix_key, value=values, priority=priority)
+                InsertParams(key=radix_key, value=values, priority=priority,
+                             req_id=req.rid)
             )
             # Free the duplicates that were already in the tree
             self.token_to_kv_pool_allocator.free(
@@ -483,6 +487,7 @@ class RadixCache(KVCacheEventMixin, BasePrefixCache):
                 value=values,
                 chunked=chunked,
                 priority=getattr(req, "priority", 0) or 0,
+                req_id=req.rid,
             )
         )
         new_prefix_len = result.prefix_len
@@ -558,7 +563,7 @@ class RadixCache(KVCacheEventMixin, BasePrefixCache):
                 new_priority = self.eviction_strategy.get_priority(x.parent)
                 heapq.heappush(eviction_heap, (new_priority, x.parent))
 
-            self._record_remove_event(x)
+            self._record_remove_event(x, reason="eviction")
 
         self.update_eviction_metrics(num_evicted, start_time)
         return EvictResult(num_tokens_evicted=num_evicted)
@@ -682,6 +687,7 @@ class RadixCache(KVCacheEventMixin, BasePrefixCache):
         value,
         priority: int = 0,
         chunked: bool = False,
+        req_id: Optional[str] = None,
     ):
         # Convert None priority to 0
         if priority is None:
@@ -726,7 +732,7 @@ class RadixCache(KVCacheEventMixin, BasePrefixCache):
             self._update_leaf_status(node)
             self._update_leaf_status(new_node)
             # Hash will be computed lazily during event emission
-            self._record_store_event(new_node)
+            self._record_store_event(new_node, req_id=req_id)
         return total_prefix_length
 
     def _print_helper(self, node: TreeNode, indent: int):
