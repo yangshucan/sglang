@@ -140,6 +140,18 @@ class PagedTokenToKVPoolAllocator(BaseTokenToKVPoolAllocator):
             + torch.arange(self.page_size, device=self.device)
         ).reshape(-1)
 
+        # NEW: emit BlockAllocated if kv_event_queue is available
+        if hasattr(self, "kv_event_queue") and self.kv_event_queue is not None:
+            from sglang.srt.disaggregation.kv_events import BlockAllocated
+
+            block_hashes = out_pages.tolist()
+            self.kv_event_queue.append(
+                BlockAllocated(
+                    block_hashes=block_hashes,
+                    num_tokens=need_size,
+                )
+            )
+
         return out_indices
 
     def alloc_extend(

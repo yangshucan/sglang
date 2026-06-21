@@ -274,6 +274,10 @@ class RadixCache(KVCacheEventMixin, BasePrefixCache):
 
         self.kv_event_queue = []
 
+        # Share the event queue with the allocator so it can emit BlockAllocated
+        if self.token_to_kv_pool_allocator is not None:
+            self.token_to_kv_pool_allocator.kv_event_queue = self.kv_event_queue
+
         if params.enable_metrics:
             self.init_metrics_collector()
 
