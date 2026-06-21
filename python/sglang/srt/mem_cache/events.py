@@ -17,7 +17,7 @@ The mixin produces the ``BlockStored`` / ``BlockRemoved`` / ``AllBlocksCleared``
 events consumed by KV-aware routers (e.g. dynamo).
 """
 
-from typing import Any
+from typing import Any, Optional
 
 from sglang.srt.disaggregation.kv_events import (
     AllBlocksCleared,
@@ -116,9 +116,9 @@ class KVCacheEventMixin:
 
                 page_index += 1
 
-    def _record_all_cleared_event(self):
+    def _record_all_cleared_event(self, req_id: Optional[str] = None):
         if self.enable_kv_cache_events:
-            self.kv_event_queue.append(AllBlocksCleared())
+            self.kv_event_queue.append(AllBlocksCleared(req_id=req_id))
 
     def take_events(self):
         """Atomically takes all events and clears the queue.

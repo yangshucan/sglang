@@ -3,6 +3,7 @@ from __future__ import annotations
 import abc
 import logging
 import threading
+import time
 from collections import defaultdict
 from dataclasses import dataclass
 from functools import wraps
@@ -489,6 +490,7 @@ class MHATokenToKVPoolHost(HostKVCache):
         layer_id,
         io_backend,
     ):
+        _load_start = time.perf_counter()
         if io_backend == "kernel":
             if self.layout == "layer_first":
                 if self.can_use_jit:
@@ -602,12 +604,13 @@ class MHATokenToKVPoolHost(HostKVCache):
         if hasattr(self, "kv_event_queue") and self.kv_event_queue is not None:
             from sglang.srt.disaggregation.kv_events import BlockLoaded
 
+            load_elapsed_us = int((time.perf_counter() - _load_start) * 1e6)
             self.kv_event_queue.append(
                 BlockLoaded(
                     block_hashes=device_indices.tolist(),
                     src_medium="CPU",
                     dst_medium="GPU",
-                    load_latency_us=0,
+                    load_latency_us=load_elapsed_us,
                 )
             )
 
@@ -1062,6 +1065,7 @@ class MLATokenToKVPoolHost(HiSparseHostPoolMixin, HostKVCache):
     def load_to_device_per_layer(
         self, device_pool, host_indices, device_indices, layer_id, io_backend
     ):
+        _mla_load_start = time.perf_counter()
         if io_backend == "kernel":
             if self.layout == "layer_first":
                 if self.can_use_jit:
@@ -1146,12 +1150,13 @@ class MLATokenToKVPoolHost(HiSparseHostPoolMixin, HostKVCache):
         if hasattr(self, "kv_event_queue") and self.kv_event_queue is not None:
             from sglang.srt.disaggregation.kv_events import BlockLoaded
 
+            mla_load_elapsed_us = int((time.perf_counter() - _mla_load_start) * 1e6)
             self.kv_event_queue.append(
                 BlockLoaded(
                     block_hashes=device_indices.tolist(),
                     src_medium="CPU",
                     dst_medium="GPU",
-                    load_latency_us=0,
+                    load_latency_us=mla_load_elapsed_us,
                 )
             )
 
