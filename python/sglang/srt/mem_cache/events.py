@@ -32,7 +32,7 @@ from sglang.srt.mem_cache.utils import (
 
 
 class KVCacheEventMixin:
-    def _record_store_event(self, node: Any, medium=None):
+    def _record_store_event(self, node: Any, medium=None, req_id=None):
         # One BlockStored per ``page_size`` chunk.
         # ``medium`` defaults to StorageMedium.GPU but callers may override
         # for lower-tier insertions (e.g. StorageMedium.CPU for host/L2 cache).
@@ -77,13 +77,14 @@ class KVCacheEventMixin:
                         block_size=len(page_tokens),
                         lora_id=None,
                         medium=medium,
+                        req_id=req_id,
                     )
                 )
 
                 parent_block_hash = block_hash
                 page_index += 1
 
-    def _record_remove_event(self, node: Any, medium=None):
+    def _record_remove_event(self, node: Any, medium=None, req_id=None, reason=None):
         # One BlockRemoved per chunk.
         # ``medium`` defaults to StorageMedium.GPU but callers may override for
         # lower-tier removals (e.g. StorageMedium.CPU when evicting from host).
@@ -105,7 +106,12 @@ class KVCacheEventMixin:
                 block_hash = hash_str_to_int64(node.hash_value[page_index])
 
                 self.kv_event_queue.append(
-                    BlockRemoved(block_hashes=[block_hash], medium=medium)
+                    BlockRemoved(
+                        block_hashes=[block_hash],
+                        medium=medium,
+                        req_id=req_id,
+                        reason=reason,
+                    )
                 )
 
                 page_index += 1
