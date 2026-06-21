@@ -598,6 +598,19 @@ class MHATokenToKVPoolHost(HostKVCache):
         else:
             raise ValueError(f"Unsupported IO backend: {io_backend}")
 
+        # Emit BlockLoaded event after each per-layer load completes
+        if hasattr(self, "kv_event_queue") and self.kv_event_queue is not None:
+            from sglang.srt.disaggregation.kv_events import BlockLoaded
+
+            self.kv_event_queue.append(
+                BlockLoaded(
+                    block_hashes=device_indices.tolist(),
+                    src_medium="CPU",
+                    dst_medium="GPU",
+                    load_latency_us=0,
+                )
+            )
+
     def backup_from_device_all_layer(
         self, device_pool, host_indices, device_indices, io_backend
     ):
@@ -704,6 +717,19 @@ class MHATokenToKVPoolHost(HostKVCache):
                 raise ValueError(f"Unsupported layout: {self.layout}")
         else:
             raise ValueError(f"Unsupported IO backend: {io_backend}")
+
+        # Emit BlockOffloaded event after all-layer backup completes
+        if hasattr(self, "kv_event_queue") and self.kv_event_queue is not None:
+            from sglang.srt.disaggregation.kv_events import BlockOffloaded
+
+            self.kv_event_queue.append(
+                BlockOffloaded(
+                    block_hashes=host_indices.tolist(),
+                    src_medium="GPU",
+                    dst_medium="CPU",
+                    pool_name="kv",
+                )
+            )
 
     def get_data_page(self, index, flat: bool = True) -> torch.Tensor:
         if self.layout == "layer_first":
@@ -1116,6 +1142,19 @@ class MLATokenToKVPoolHost(HiSparseHostPoolMixin, HostKVCache):
         else:
             raise ValueError(f"Unsupported IO backend: {io_backend}")
 
+        # Emit BlockLoaded event after each per-layer load completes
+        if hasattr(self, "kv_event_queue") and self.kv_event_queue is not None:
+            from sglang.srt.disaggregation.kv_events import BlockLoaded
+
+            self.kv_event_queue.append(
+                BlockLoaded(
+                    block_hashes=device_indices.tolist(),
+                    src_medium="CPU",
+                    dst_medium="GPU",
+                    load_latency_us=0,
+                )
+            )
+
     def backup_from_device_all_layer(
         self, device_pool, host_indices, device_indices, io_backend
     ):
@@ -1200,6 +1239,19 @@ class MLATokenToKVPoolHost(HiSparseHostPoolMixin, HostKVCache):
                 raise ValueError(f"Unsupported layout: {self.layout}")
         else:
             raise ValueError(f"Unsupported IO backend: {io_backend}")
+
+        # Emit BlockOffloaded event after all-layer backup completes
+        if hasattr(self, "kv_event_queue") and self.kv_event_queue is not None:
+            from sglang.srt.disaggregation.kv_events import BlockOffloaded
+
+            self.kv_event_queue.append(
+                BlockOffloaded(
+                    block_hashes=host_indices.tolist(),
+                    src_medium="GPU",
+                    dst_medium="CPU",
+                    pool_name="kv",
+                )
+            )
 
     def get_data_page(self, index, flat: bool = True) -> torch.Tensor:
         if self.layout == "layer_first":
