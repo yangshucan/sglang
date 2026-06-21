@@ -105,8 +105,43 @@ class AllBlocksCleared(KVCacheEvent):
     pass
 
 
+class BlockAllocated(KVCacheEvent):
+    """Emitted when TokenToKVPoolAllocator allocates new page slots."""
+    block_hashes: list[int]
+    num_tokens: int
+    medium: str = "GPU"
+
+
+class BlockTransferred(KVCacheEvent):
+    """Emitted when PD disaggregation KV transfer completes."""
+    block_hashes: list[int]
+    src: str
+    dst: str
+    backend: str  # "NVLINK" | "RDMA" | "MOONCAKE" | "FAKE"
+    transfer_latency_us: int
+    bytes_transferred: int
+
+
+class BlockOffloaded(KVCacheEvent):
+    """Emitted when KV block is offloaded from GPU to lower tier."""
+    block_hashes: list[int]
+    src_medium: str  # "GPU"
+    dst_medium: str  # "CPU" | "DISK" | "EXTERNAL"
+    pool_name: str  # "kv" | "swa" | "mamba"
+
+
+class BlockLoaded(KVCacheEvent):
+    """Emitted when KV block is loaded back from lower tier to GPU."""
+    block_hashes: list[int]
+    src_medium: str
+    dst_medium: str  # "GPU"
+    load_latency_us: int
+
+
 class KVEventBatch(EventBatch):
-    events: list[Union[BlockStored, BlockRemoved, AllBlocksCleared]]
+    events: list[Union[BlockStored, BlockRemoved, AllBlocksCleared,
+                       BlockAllocated, BlockTransferred,
+                       BlockOffloaded, BlockLoaded]]
 
 
 class EventPublisher(ABC):
