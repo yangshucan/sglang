@@ -17,6 +17,13 @@ from sglang.srt.disaggregation.kv_events import (
     KVEventBatch,
 )
 
+# Auto-load KVCache footprint tracer plugin if installed.
+# The import side-effect registers "footprint" with EventPublisherFactory.
+try:
+    import sglang_kv_footprint  # noqa: F401
+except ImportError:
+    pass
+
 if TYPE_CHECKING:
     from sglang.srt.distributed.parallel_state_wrapper import ParallelState
     from sglang.srt.mem_cache.base_prefix_cache import BasePrefixCache
@@ -51,19 +58,30 @@ class SchedulerKvEventsPublisher:
     max_total_num_tokens: int
     get_stats: Callable
     enable_kv_cache_events: bool = False
+    kv_events_publisher: Optional[str] = None
     kv_event_publisher: Any = None
 
     def __post_init__(self) -> None:
         self.init_kv_events(self.kv_events_config)
 
     def init_kv_events(self, kv_events_config: Optional[str]):
+        # Determine the effective config: --kv-events-publisher takes
+        # precedence over --kv-events-config when --enable-kv-cache-events
+        # is set without --kv-events-config.
+        effective_config = kv_events_config
+        if not effective_config and self.enable_kv_cache_events:
+            # --enable-kv-cache-events was set without --kv-events-config;
+            # construct a config from --kv-events-publisher if available.
+            publisher_cfg = self.kv_events_publisher or '{"publisher":"zmq"}'
+            effective_config = publisher_cfg
+
         self.enable_kv_cache_events = bool(
-            kv_events_config and self.ps.attn_tp_rank == 0 and self.ps.attn_cp_rank == 0
+            effective_config and self.ps.attn_tp_rank == 0 and self.ps.attn_cp_rank == 0
         )
 
         if self.enable_kv_cache_events:
             self.kv_event_publisher = EventPublisherFactory.create(
-                kv_events_config, self.ps.attn_dp_rank
+                effective_config, self.ps.attn_dp_rank
             )
 
     def emit_kv_metrics(self):

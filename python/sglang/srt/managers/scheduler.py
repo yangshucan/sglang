@@ -440,10 +440,13 @@ class Scheduler(
             tp_cpu_group=self.tp_cpu_group,
             attn_cp_cpu_group=self.attn_cp_cpu_group,
             enable_metrics=self.server_args.enable_metrics,
-            enable_kv_cache_events=bool(
-                self.server_args.kv_events_config
-                and self.ps.attn_tp_rank == 0
-                and self.ps.attn_cp_rank == 0
+            enable_kv_cache_events=(
+                self.server_args.enable_kv_cache_events
+                or bool(
+                    self.server_args.kv_events_config
+                    and self.ps.attn_tp_rank == 0
+                    and self.ps.attn_cp_rank == 0
+                )
             ),
             ps=self.ps,
             tp_group=self.tp_group,
@@ -1688,6 +1691,8 @@ class Scheduler(
     def init_kv_events_publisher(self) -> None:
         self.kv_events_publisher = SchedulerKvEventsPublisher(
             kv_events_config=self.server_args.kv_events_config,
+            enable_kv_cache_events=self.server_args.enable_kv_cache_events,
+            kv_events_publisher=self.server_args.kv_events_publisher,
             ps=self.ps,
             attn_tp_rank=self.ps.attn_tp_rank,
             attn_cp_rank=self.ps.attn_cp_rank,

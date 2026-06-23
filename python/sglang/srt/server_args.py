@@ -503,6 +503,8 @@ class ServerArgs:
     decode_log_interval: int = 40
     enable_request_time_stats_logging: bool = False
     kv_events_config: Optional[str] = None
+    enable_kv_cache_events: bool = False
+    kv_events_publisher: Optional[str] = None
     enable_forward_pass_metrics: bool = False
     forward_pass_metrics_worker_id: str = ""
     forward_pass_metrics_ipc_name: Optional[str] = None
@@ -5337,6 +5339,18 @@ class ServerArgs:
             type=str,
             default=None,
             help="Config in json format for NVIDIA dynamo KV event publishing. Publishing will be enabled if this flag is used.",
+        )
+        parser.add_argument(
+            "--enable-kv-cache-events",
+            action="store_true",
+            default=False,
+            help="Enable KV cache event publishing for footprint tracing.",
+        )
+        parser.add_argument(
+            "--kv-events-publisher",
+            type=str,
+            default=None,
+            help="KV event publisher config in JSON format, e.g. '{\"publisher\":\"footprint\"}'. Requires --enable-kv-cache-events.",
         )
         parser.add_argument(
             "--enable-forward-pass-metrics",
