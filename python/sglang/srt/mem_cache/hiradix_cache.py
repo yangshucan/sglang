@@ -165,6 +165,14 @@ class HiRadixCache(RadixCache):
             extra_metric_labels=self.extra_metric_labels,
         )
 
+        # Propagate kv_event_queue to host memory pools so that
+        # BlockOffloaded / BlockLoaded events are actually emitted.
+        if (
+            self.token_to_kv_pool_host is not None
+            and self.enable_kv_cache_events
+        ):
+            self.token_to_kv_pool_host.kv_event_queue = self.kv_event_queue
+
         # record the nodes with ongoing write through
         self.ongoing_write_through = {}
         # record the node segments with ongoing load back

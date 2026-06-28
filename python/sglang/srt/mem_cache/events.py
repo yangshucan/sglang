@@ -19,6 +19,8 @@ events consumed by KV-aware routers (e.g. dynamo).
 
 from typing import Any, Optional
 
+import torch
+
 from sglang.srt.disaggregation.kv_events import (
     AllBlocksCleared,
     BlockRemoved,
@@ -36,6 +38,7 @@ class KVCacheEventMixin:
         # One BlockStored per ``page_size`` chunk.
         # ``medium`` defaults to StorageMedium.GPU but callers may override
         # for lower-tier insertions (e.g. StorageMedium.CPU for host/L2 cache).
+        gpu_id = torch.cuda.current_device() if torch.cuda.is_available() else None
         if self.enable_kv_cache_events:
             if medium is None:
                 medium = StorageMedium.GPU
@@ -78,6 +81,7 @@ class KVCacheEventMixin:
                         lora_id=None,
                         medium=medium,
                         req_id=req_id,
+                        gpu_id=gpu_id,
                     )
                 )
 
@@ -88,6 +92,7 @@ class KVCacheEventMixin:
         # One BlockRemoved per chunk.
         # ``medium`` defaults to StorageMedium.GPU but callers may override for
         # lower-tier removals (e.g. StorageMedium.CPU when evicting from host).
+        gpu_id = torch.cuda.current_device() if torch.cuda.is_available() else None
         if self.enable_kv_cache_events:
             if medium is None:
                 medium = StorageMedium.GPU
@@ -111,6 +116,7 @@ class KVCacheEventMixin:
                         medium=medium,
                         req_id=req_id,
                         reason=reason,
+                        gpu_id=gpu_id,
                     )
                 )
 

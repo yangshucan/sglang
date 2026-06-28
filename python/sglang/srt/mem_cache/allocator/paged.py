@@ -149,6 +149,9 @@ class PagedTokenToKVPoolAllocator(BaseTokenToKVPoolAllocator):
                 BlockAllocated(
                     block_hashes=block_hashes,
                     num_tokens=need_size,
+                    gpu_id=torch.cuda.current_device()
+                    if torch.cuda.is_available()
+                    else None,
                 )
             )
 

@@ -1702,6 +1702,16 @@ class DecodeTransferQueue(DecodeHiCacheTransferMixin):
                         from sglang.srt.disaggregation.kv_events import (
                             BlockTransferred,
                         )
+                        from sglang.srt.utils.numa_utils import (
+                            get_numa_node_if_available,
+                        )
+
+                        gpu_id = torch.cuda.current_device() if torch.cuda.is_available() else None
+                        numa_node = None
+                        if gpu_id is not None:
+                            numa_node = get_numa_node_if_available(
+                                self.scheduler.server_args, gpu_id
+                            )
 
                         self.tree_cache.kv_event_queue.append(
                             BlockTransferred(
@@ -1713,6 +1723,8 @@ class DecodeTransferQueue(DecodeHiCacheTransferMixin):
                                 transfer_latency_us=0,
                                 bytes_transferred=kv_committed_len
                                 * per_token_kv_bytes,
+                                gpu_id=gpu_id,
+                                numa_node=numa_node,
                             )
                         )
             elif poll in [

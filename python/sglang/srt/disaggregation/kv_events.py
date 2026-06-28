@@ -58,6 +58,8 @@ class KVCacheEvent(
     """Base class for all KV cache-related events"""
     req_id: Optional[str] = None
     sequence_id: Optional[int] = None
+    gpu_id: Optional[int] = None
+    numa_node: Optional[int] = None
 
 
 class StorageMedium(str, enum.Enum):
@@ -122,6 +124,13 @@ class BlockTransferred(KVCacheEvent):
     bytes_transferred: int
 
 
+class BlockReused(KVCacheEvent):
+    """Emitted when a request reuses existing KV cache blocks via prefix match."""
+    block_hashes: list[int]
+    num_tokens: int
+    medium: str = "GPU"
+
+
 class BlockOffloaded(KVCacheEvent):
     """Emitted when KV block is offloaded from GPU to lower tier."""
     block_hashes: list[int]
@@ -141,7 +150,7 @@ class BlockLoaded(KVCacheEvent):
 class KVEventBatch(EventBatch):
     events: list[Union[BlockStored, BlockRemoved, AllBlocksCleared,
                        BlockAllocated, BlockTransferred,
-                       BlockOffloaded, BlockLoaded]]
+                       BlockReused, BlockOffloaded, BlockLoaded]]
 
 
 class EventPublisher(ABC):

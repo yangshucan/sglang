@@ -127,6 +127,29 @@ def match_prefix_for_req(
         req.mamba_branching_seqlen = match_result.mamba_branching_seqlen
     if match_result.cache_protected_len is not None:
         req.cache_protected_len = match_result.cache_protected_len
+
+    # Emit BlockReused event when KV cache blocks are reused via prefix match
+    if (
+        len(req.prefix_indices) > 0
+        and hasattr(tree_cache, "enable_kv_cache_events")
+        and tree_cache.enable_kv_cache_events
+        and hasattr(tree_cache, "kv_event_queue")
+    ):
+        from sglang.srt.disaggregation.kv_events import BlockReused
+
+        page_size = getattr(tree_cache, "page_size", 1)
+        block_hashes = req.prefix_indices[::page_size].tolist()
+        tree_cache.kv_event_queue.append(
+            BlockReused(
+                req_id=req.rid,
+                block_hashes=block_hashes,
+                num_tokens=len(req.prefix_indices),
+                gpu_id=torch.cuda.current_device()
+                if torch.cuda.is_available()
+                else None,
+            )
+        )
+
     return match_result
 
 

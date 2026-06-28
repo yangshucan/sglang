@@ -605,12 +605,19 @@ class MHATokenToKVPoolHost(HostKVCache):
             from sglang.srt.disaggregation.kv_events import BlockLoaded
 
             load_elapsed_us = int((time.perf_counter() - _load_start) * 1e6)
+            gpu_id = None
+            if hasattr(self, "device_pool") and hasattr(self.device_pool, "device"):
+                dev_str = str(self.device_pool.device)
+                if dev_str.startswith("cuda:"):
+                    gpu_id = int(dev_str.split(":")[1])
+
             self.kv_event_queue.append(
                 BlockLoaded(
                     block_hashes=device_indices.tolist(),
                     src_medium="CPU",
                     dst_medium="GPU",
                     load_latency_us=load_elapsed_us,
+                    gpu_id=gpu_id,
                 )
             )
 
@@ -725,12 +732,19 @@ class MHATokenToKVPoolHost(HostKVCache):
         if hasattr(self, "kv_event_queue") and self.kv_event_queue is not None:
             from sglang.srt.disaggregation.kv_events import BlockOffloaded
 
+            gpu_id = None
+            if hasattr(self, "device_pool") and hasattr(self.device_pool, "device"):
+                dev_str = str(self.device_pool.device)
+                if dev_str.startswith("cuda:"):
+                    gpu_id = int(dev_str.split(":")[1])
+
             self.kv_event_queue.append(
                 BlockOffloaded(
                     block_hashes=host_indices.tolist(),
                     src_medium="GPU",
                     dst_medium="CPU",
                     pool_name="kv",
+                    gpu_id=gpu_id,
                 )
             )
 
@@ -1150,6 +1164,12 @@ class MLATokenToKVPoolHost(HiSparseHostPoolMixin, HostKVCache):
         if hasattr(self, "kv_event_queue") and self.kv_event_queue is not None:
             from sglang.srt.disaggregation.kv_events import BlockLoaded
 
+            gpu_id = None
+            if hasattr(self, "device_pool") and hasattr(self.device_pool, "device"):
+                dev_str = str(self.device_pool.device)
+                if dev_str.startswith("cuda:"):
+                    gpu_id = int(dev_str.split(":")[1])
+
             mla_load_elapsed_us = int((time.perf_counter() - _mla_load_start) * 1e6)
             self.kv_event_queue.append(
                 BlockLoaded(
@@ -1157,6 +1177,7 @@ class MLATokenToKVPoolHost(HiSparseHostPoolMixin, HostKVCache):
                     src_medium="CPU",
                     dst_medium="GPU",
                     load_latency_us=mla_load_elapsed_us,
+                    gpu_id=gpu_id,
                 )
             )
 
@@ -1249,12 +1270,19 @@ class MLATokenToKVPoolHost(HiSparseHostPoolMixin, HostKVCache):
         if hasattr(self, "kv_event_queue") and self.kv_event_queue is not None:
             from sglang.srt.disaggregation.kv_events import BlockOffloaded
 
+            gpu_id = None
+            if hasattr(self, "device_pool") and hasattr(self.device_pool, "device"):
+                dev_str = str(self.device_pool.device)
+                if dev_str.startswith("cuda:"):
+                    gpu_id = int(dev_str.split(":")[1])
+
             self.kv_event_queue.append(
                 BlockOffloaded(
                     block_hashes=host_indices.tolist(),
                     src_medium="GPU",
                     dst_medium="CPU",
                     pool_name="kv",
+                    gpu_id=gpu_id,
                 )
             )
 
